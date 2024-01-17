@@ -1,0 +1,236 @@
+################################################################################
+# SCRIPT RESPONS?VEL PELA LEITURA DAS FUN??ES RESULTANDO NOS GR?FICOS E TESTES.
+################################################################################
+
+# Leitura dos testes
+source("Z:/GERENCIA/ESTUDOS/2021/05. ENTRADA EM APOSENTADORIA/01. AN?LISE/Aposentadoria_Parte2_Funcoes_e _Testes.R")
+
+# GR?FICO DA PORCENTAGEM DE CARREIRAS NA BASE DE DADOS
+#Criando o dataframe com nome de carreiras
+x = data.frame(ID_APOSENTADO_MATRICULA = i2021$ID_APOSENTADO_MATRICULA,
+               CO_COMP_MASSA = i2021$CO_COMP_MASSA,
+               CO_TIPO_CARGO = i2021$CO_TIPO_CARGO,
+               VL_APOSENTADORIA = i2021$VL_APOSENTADORIA,
+               sexo = i2021$CO_SEXO_APOSENTADO,
+               carreira = rep(NA,length(i2021$VL_APOSENTADORIA)))
+x = x %>%
+  mutate(carreira = ifelse((CO_TIPO_CARGO == 2 | CO_TIPO_CARGO == 3),
+                           "Professores ",
+                           (ifelse((CO_COMP_MASSA == 2),
+                                   "Militares ",
+                                   (ifelse((CO_COMP_MASSA == 1 & CO_TIPO_CARGO == 4),
+                                           "Policiais Civis ",
+                                           (ifelse((CO_COMP_MASSA == 1 & CO_TIPO_CARGO == 7),
+                                                   "Demais Servidores ",
+                                                   carreira))))))),
+         sexo = ifelse(sexo == 1,
+                       "Feminino",
+                       ifelse(sexo == 2,
+                              "Masculino",
+                              sexo)))
+w = table(x$carreira)
+
+cores = brewer.pal(4, "Greys")
+porc = round(w*100/sum(w),2)
+rotulos = paste(names(w),"(",porc,"%)",sep="")
+pie(w,
+    main = "Porcentagem de Carreiras na Base de Dados",
+    labels = rotulos,
+    col = cores)
+
+# Gr?fico de barras de numero de aposentados por sexo e carreira
+z = table(x$sexo, x$carreira)
+cor = c("red", "blue") 
+nomes = levels(z)
+porcent = round(prop.table(z)*100,2)
+porcentagem = paste(nomes," (",porcent,"%",")",sep="")
+# Barras empilhadas.
+barplot(z,
+        xlab = "Carreiras",
+        ylab = "N?mero de aposentados",
+        col = cor,
+        legend.text = TRUE,
+        args.legend = list(bty = "n", x = "top", ncol = 1),
+        main = "Aposentados por Sexo e Carreira")
+
+# Plotando os gr?ficos idade x qntd segregado por carreira
+graf1 = plot_carreira(professores, "Professores Aposentados")
+graf2 = plot_carreira(militares, "Militares Aposentados")
+graf3 = plot_carreira(policiais, "Policiais Aposentados")
+graf4 = plot_carreira(demais_servidores, "Demais Servidores Aposentados")
+# Comparando gr?ficos
+grid.arrange(graf1, graf2, graf3, graf4, ncol = 2)
+
+#Funcao para plotar graficos idade r x qtd segregado por carreira e sexo
+gr1 = plot_r(professores, "Professores Aposentados", "1")
+gr2 = plot_r(professores, "Professores Aposentados", "2")
+gr3 = plot_r(militares, "Militares Aposentados", "1")
+gr4 = plot_r(militares, "Militares Aposentados", "2")
+gr5 = plot_r(policiais, "Policiais Civis Aposentados", "1")
+gr6 = plot_r(policiais, "Policiais Civis Aposentados", "2")
+gr7 = plot_r(demais_servidores, "Demais Servidores Aposentados", "1")
+gr8 = plot_r(demais_servidores, "Demais Servidores Aposentados", "2")
+# Comparando Gr?ficos 
+grid.arrange(gr1, gr2, gr3, gr4, gr5, gr6, gr7, gr8, ncol = 2)
+
+# Elaborando tabela de taxas por idade em cada carreira
+tab_tx_p = taxas_carreira(professores) #Taxa referente a professores
+tab_tx_m = taxas_carreira(militares) #Taxa referente a militares 
+tab_tx_pc = taxas_carreira(policiais) #Taxa referente aos policiais civis
+tab_tx_d = taxas_carreira(demais_servidores) #Taxa referente aos Demais servidores
+
+# Fun??o para plotar a quantidade de aposentados em ambos sexos na carreira
+par(mfrow = c(2,2))
+gq1 = Qntd_f_m(tab_tx_p, "Quantidade de Professores Aposentados por Sexo") 
+gq2 = Qntd_f_m(tab_tx_m, "Quantidade de  Militares Aposentados por Sexo")
+gq3 = Qntd_f_m(tab_tx_pc, "Quantidade de Policiais Civis Aposentados por Sexo") 
+gq4 = Qntd_f_m(tab_tx_d, "Quantidade de Demais Servidores Aposentados por Sexo")
+
+#Plotando graficos dos demais servidores por sexo , grafico idade X n?mero de aposentados
+d_fem_f1 = plot_demais(demais_servidores, "Demais Servidores (feminino)", "1", "Faixa1")
+d_fem_f2 = plot_demais(demais_servidores, "Demais Servidores (feminino)", "1", "Faixa2")
+d_fem_f3 = plot_demais(demais_servidores, "Demais Servidores (feminino)", "1", "Faixa3")
+d_fem_f4 = plot_demais(demais_servidores, "Demais Servidores (feminino)", "1", "Faixa4")
+d_masc_f1 = plot_demais(demais_servidores, "Demais Servidores (masculino)", "2", "Faixa1")
+d_masc_f2 = plot_demais(demais_servidores, "Demais Servidores (masculino)", "2", "Faixa2")
+d_masc_f3 = plot_demais(demais_servidores, "Demais Servidores (masculino)", "2", "Faixa3")
+d_masc_f4 = plot_demais(demais_servidores, "Demais Servidores (masculino)", "2", "Faixa4")
+# Comparando gr?ficos pelo sexo
+grid.arrange(d_fem_f1, d_fem_f2, d_fem_f3, d_fem_f4, ncol = 2)
+grid.arrange(d_masc_f1, d_masc_f2, d_masc_f3, d_masc_f4, ncol = 2)
+
+#  GR?FICO DE NUMERO DE APOSENTADOS X TEMPO DE CONTRIBUI??O EM CADA SEXO
+contribuicao_d_f = contribuicao_d(demais_servidores, "Demais Servidores (Feminino)", "1")
+
+contribuicao_d_m = contribuicao_d(demais_servidores, "Demais Servidores (Masculino)", "2")
+# Comparando gr?ficos
+grid.arrange(contribuicao_d_f, contribuicao_d_m, ncol = 2)
+
+# TESTE DE TRANSLA??O DA IDADE DE APOSENTADORIA FMEININO EM +5 ANOS
+# Atribuindo os valores para realizar a transla?ao
+par(mfrow = c(2,2))
+translacao_prof = teste_translacao(tab_tx_p, "Taxa X Idade (Professores)") 
+translacao_militar = teste_translacao(tab_tx_m, "Taxa X Idade (Militares)")
+translacao_pc = teste_translacao(tab_tx_pc, "Taxa X Idade (Policiais Civis)")
+translacao_demais = teste_translacao(tab_tx_d, "Taxa X Idade (Demais Servidores)")
+
+#Teste Ks
+translacao_prof # rejeitou a hipotese
+translacao_militar # rejeitou a hipotese
+translacao_pc 
+translacao_demais # rejeitou a hipotese
+
+# Teste de Padroniza??o
+padronizado_prof = padronizado(tab_tx_p) 
+padronizado_militar = padronizado(tab_tx_m)
+padronizado_pc = padronizado(tab_tx_pc)
+padronizado_demais = padronizado(tab_tx_d)
+
+# Fun??o para plotar a quantidade padronizada de aposentados em ambos sexos na carreira
+par(mfrow = c(2,2))
+gp1 = Qnt_padr_f_m(padronizado_prof, "Quantidade Padronizada de Professores Aposentados por Sexo") 
+gp2 = Qnt_padr_f_m(padronizado_militar, "Quantidade Padronizada de Militares Aposentados por Sexo")
+gp3 = Qnt_padr_f_m(padronizado_pc, "Quantidade Padronizada de Policia Civil Aposentados por Sexo") 
+gp4 = Qnt_padr_f_m(padronizado_demais, "Quantidade Padronizada de Demais Servidores Aposentados por Sexo")
+
+# Teste de transla??o da Quantidade Padronizada 
+par(mfrow = c(2,2))
+# Atribuindo os valores para realizar a transla?ao
+transl_prof_qntd_padr = test_transl_qntd_padronizada(padronizado_prof, "Quantidade Padronizada Translada X Idade (Professores)") 
+transl_militar_qntd_padr = test_transl_qntd_padronizada(padronizado_militar, "Quantidade Padronizada Translada X Idade (Militares)")
+transl_pc_qntd_padr = test_transl_qntd_padronizada(padronizado_pc, "Quantidade Padronizada Translada X Idade (Policiais Civis)")
+transl_demais_qntd_padr = test_transl_qntd_padronizada(padronizado_demais, "Quantidade Padronizada Translada X Idade (Demais Servidores)")
+
+#Teste Ks
+transl_prof_qntd_padr
+transl_militar_qntd_padr # Rejeitou para esse intervaloo, verificando em intervalo maior.
+transl_pc_qntd_padr
+transl_demais_qntd_padr
+
+# Atribuindo os valores para realizar a transla?ao padronizada
+par(mfrow = c(2,2))
+translacao_padr_prof = teste_translacao_tx_padr(padronizado_prof, "Taxa da Quantidade Padronizada (Professores)") 
+translacao_padr_militar = teste_translacao_tx_padr(padronizado_militar, "Taxa da Quantidade Padronizada (Militares)")
+translacao_padr_pc = teste_translacao_tx_padr(padronizado_pc, "Taxa da Quantidade Padronizada (Policiais Civis)")
+translacao_padr_demais = teste_translacao_tx_padr(padronizado_demais, "Taxa da Quantidade Padronizada (Demais Servidores)")
+
+normalizado_prof = normalizado(padronizado_prof) 
+normalizado_militar = normalizado(padronizado_militar)
+normalizado_pc = normalizado(padronizado_pc)
+normalizado_demais = normalizado(padronizado_demais)
+
+# Foi verificado no teste de transla?ao para os militares em um intervalor de idade que se inciava aos
+#45 anos e outro aos 40 anos e ambos tambem refeitaram a hipotese por isso ser?
+# Repetindo fun??o para calculo de taxas por?m a taxa de militares ser?
+#calculada apenas para o sexo masculino de forma a representar a maioria dessa
+#carreira, isso se deve por ter sido rejeitado no teste de transla??o para
+#quantidade padronizada de aposentados.
+
+tab_tx_m_m = taxas_carreira1(militares) #Taxa referente a militares masculinos apenas 
+
+Qntd_militar_m = tab_tx_m_m[,c("idadeaposentadoria","Qntd_masc")]
+
+plot_qntd_m_m = plot(Qntd_militar_m$idadeaposentadoria,
+                     Qntd_militar_m$Qntd_masc,
+                     type = "lines",
+                     col = "blue",
+                     main = "Quantidade de militares masculino aposentados",
+                     xlab = "Idade de Aposentadoria",
+                     ylab = "Quantidade de aposentados")
+
+# Juntar a quantidade de mulheres somando +5 anos e juntar com os homens
+#e contruir a tabua de taxas e  teste de suavizada para militares vou usar 
+#apenas os homens pois o teste foi rejeitado e estaremos represnetando a maior 
+#parte da popula?ao militar
+
+df1 = df(tab_tx_p) 
+df2 = df(tab_tx_m_m)
+df3 = df(tab_tx_pc)
+df4 = df(tab_tx_d) 
+
+# Teste de ader?ncia - Suaviza??o por Kernel
+# Gr?ficos de ader?ncia
+par(mfrow = c(2,2))
+ad_prof = teste_aderencia(tab_tx_p, "Professores")
+ad_militar = teste_aderencia(tab_tx_m_m, "Militares")
+ad_pc = teste_aderencia(tab_tx_pc, "Policiais")
+ad_demais = teste_aderencia(tab_tx_d, "Demais Servidores")
+# Resultados do teste de KS - Todos aceitam o teste
+ad_prof 
+ad_pc
+ad_demais
+
+# Gr?ficos de ader?ncia
+par(mfrow = c(2,4))
+ad_prof1 = teste_aderencia1(tab_tx_p, "Professores Feminino", "1")
+ad_militar1 = teste_aderencia1(tab_tx_m, "Militares Feminino", "1")
+ad_pc1 = teste_aderencia1(tab_tx_pc, "Policiais Feminino", "1")
+ad_demais1 = teste_aderencia1(tab_tx_d, "Demais Servidores Feminino", "1")
+
+ad_prof2 = teste_aderencia1(tab_tx_p, "Professores Masculino", "2")
+ad_militar2 = teste_aderencia1(tab_tx_m, "Militares Masculino", "2")
+ad_pc2 = teste_aderencia1(tab_tx_pc, "Policiais Masculino", "2")
+ad_demais2 = teste_aderencia1(tab_tx_d, "Demais Servidores Masculino", "2")
+
+# Resultados dos testes de ks
+ad_prof1
+ad_prof2
+ad_militar1
+ad_militar2
+ad_pc1
+ad_pc2
+ad_demais1
+ad_demais2
+
+# Criando as Tabuas
+tabua_prof = tabua(tab_tx_p)
+tabua_militar = tabua(tab_tx_m)
+tabua_pc = tabua(tab_tx_pc)
+tabua_demai2 = tabua(tab_tx_d)
+
+# Exportando tabelas para o Excel
+write_xlsx(list("P1" = tabua_prof,
+                "P2" = tabua_militar,
+                "P3" = tabua_pc,
+                "P4" = tabua_demai2), path = "./Tabuas_v03.xlsx")
+
