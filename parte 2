@@ -1,0 +1,548 @@
+# Script respons?vel pelas fun??es e testes do estudo de entrada em aposentadoria
+
+# LENDO A PRIMEIRA PARTE DO ESTUDO DE APOSENTADORIA
+source("Z:/GERENCIA/ESTUDOS/2021/05. ENTRADA EM APOSENTADORIA/01. AN?LISE/Aposentadoria_Parte1.R")
+
+# Fun??o para plotar os gr?ficos de idade x qnt
+plot_carreira = function(db, title)
+{
+  p1 = db %>%
+    group_by(idadeaposentadoria) %>%
+    count() %>%
+    ggplot(aes(x=idadeaposentadoria, y = n)) +
+    geom_line() +
+    theme_test() +
+    labs(title = title,
+         x = "Idade de aposentadoria" ,
+         y = "N?mero de aposentados") +
+    theme(plot.title = element_text(size = 11), 
+          axis.title.x = element_text(size = 10),
+          axis.title.y = element_text(size = 10),
+          axis.text = element_text(size = 8)) +
+    xlim(40,75)
+  return(p1)
+}
+
+#Funcao para plotar graficos idade r x qtd
+plot_r = function(db, title, sexo) 
+{
+  if(sexo == "1"){
+    sex = "Feminino"
+    cor = "red"
+  }else{
+    sex = "Masculino"
+    cor = "blue"
+  }
+  p1 = filter(db,db$CO_SEXO_APOSENTADO == sexo) %>%
+    group_by(idadeaposentadoria) %>%
+    count() %>%
+    ggplot(aes(x=idadeaposentadoria, y = n)) +
+    geom_line(col = cor) +
+    theme_test() +
+    labs(title = title,
+         subtitle = sex,
+         x = "Idade da aposentadoria" ,
+         y = " N?mero de aposentados") +
+    theme(plot.title = element_text(size = 10),
+          plot.subtitle = element_text(size=9),
+          axis.title.x = element_text(size = 9),
+          axis.title.y = element_text(size = 9),
+          axis.text = element_text(size = 8)) +
+    xlim(40,75) 
+  return(p1)
+}
+
+# Fun??o para calculo de taxas 
+taxas_carreira = function(db)
+{
+  p1 = db %>%                             
+    group_by(idadeaposentadoria) %>%
+    count()
+  fem = filter(db,db$CO_SEXO_APOSENTADO == 1) %>%
+    group_by(idadeaposentadoria) %>%
+    count()
+  
+  masc = filter(db,db$CO_SEXO_APOSENTADO == 2) %>%
+    group_by(idadeaposentadoria) %>%
+    count()
+  
+  z = p1 %>%
+    full_join(masc, by = "idadeaposentadoria") %>%
+    full_join(fem, by = "idadeaposentadoria")
+  
+  z[is.na(z)] = 0
+  
+  x = data.frame(idadeaposentadoria = p1$idadeaposentadoria,
+                 Qntd_total = z$n.x,
+                 Qntd_masc = z$n.y,
+                 Qntd_fem = z$n,
+                 Taxa_total = (z$n.x / sum(z$n.x)),
+                 Taxa_masc = (z$n.y / sum(z$n.x)),
+                 Taxa_fem = (z$n / sum(z$n.x)))
+  return(x)
+}
+
+# Fun??o para plotar a quantidade de aposentados em ambos sexos na carreira
+Qntd_f_m = function(db, title)
+{
+  Qntd_fem = db[,c("idadeaposentadoria","Qntd_fem")] 
+  Qntd_masc = db[,c("idadeaposentadoria","Qntd_masc")]
+  Qntd_total = db[,c("idadeaposentadoria","Qntd_total")]
+  maximo = max(Qntd_total$Qntd_total)
+  gq = plot(Qntd_fem$idadeaposentadoria,
+            Qntd_fem$Qntd_fem,
+            type = "lines",
+            col = "red",
+            main = title,
+            xlab = "Idade de aposentadoria",
+            ylab = "N?mero de aposentados",
+            ylim = c(0, maximo),      
+            cex.lab = 0.8,
+            cex.axis = 0.8,
+            cex.main = 0.9)
+  lines(Qntd_masc$idadeaposentadoria,
+        Qntd_masc$Qntd_masc,
+        col = "blue")
+  
+  return(gq)
+}
+
+#Funcao para plotar graficos dos demais servidores por sexo , grafico idade X n?mero de aposentados
+
+plot_demais = function(db, title, sexo, f) 
+{
+  v = data.frame(idadeaposentadoria = db$idadeaposentadoria,
+                 CO_SEXO_APOSENTADO = db$CO_SEXO_APOSENTADO,
+                 VL_APOSENTADORIA = db$VL_APOSENTADORIA,
+                 faixa = db$VL_APOSENTADORIA)
+  w = v %>%
+    mutate(faixa = ifelse(faixa < 2000,
+                          "Faixa1",
+                          (ifelse(2000 < faixa & faixa < 4000,
+                                  "Faixa2",
+                                  (ifelse(4000 < faixa & faixa < 8000,
+                                          "Faixa3",
+                                          ifelse(faixa > 8000, "Faixa4", faixa)))))))
+  cor = if (sexo == "1"){
+    "red"
+  } else{
+    "blue"
+  }
+  
+  p1 = filter(w,w$CO_SEXO_APOSENTADO == sexo , w$faixa == f) %>%
+    group_by(idadeaposentadoria) %>%
+    count() %>%
+    
+    ggplot(aes(x = idadeaposentadoria, y = n)) +
+    geom_col(fill= cor) +
+    theme_test() +
+    labs(title = title,
+         subtitle = f,
+         x = "Idade da aposentadoria" ,
+         y = " N?mero de aposentados")  +
+    theme(plot.title = element_text(size = 11),
+          plot.subtitle = element_text(size=10),
+          axis.title.x = element_text(size = 10),
+          axis.title.y = element_text(size = 10),
+          axis.text = element_text(size = 8)) +
+    xlim(40,75)
+  
+  return(p1)
+}
+
+#  GR?FICO DE NUMERO DE APOSENTADOS X TEMPO DE CONTRIBUI??O EM CADA SEXO
+contribuicao_d = function(db, title, sexo) 
+{
+  cor = if (sexo == "1"){
+    "red"
+  } else{
+    "blue"
+  }
+  
+  p1 = filter(db,db$CO_SEXO_APOSENTADO == sexo) %>%
+    group_by(TEMPO_CONTR_TOTAL) %>%
+    count() %>%
+    
+    ggplot(aes(x = TEMPO_CONTR_TOTAL, y = n)) +
+    geom_line(color = cor) +
+    theme_test() +
+    labs(title = title,
+         x = "Tempo de contribui??o" ,
+         y = " N?mero de aposentados") +
+    theme(plot.title = element_text(size = 10),
+          axis.title.x = element_text(size = 9),
+          axis.title.y = element_text(size = 9),
+          axis.text = element_text(size = 8))
+  
+  return(p1)
+}
+
+# TESTE DE TRANSLA??O DA IDADE DE APOSENTADORIA FMEININO EM +5 ANOS
+teste_translacao = function(tx, title)
+{ 
+  tx_fem = tx[,c("idadeaposentadoria","Taxa_fem")] 
+  tx_masc = tx[,c("idadeaposentadoria","Taxa_masc")]
+  
+  tx_fem$idadeaposentadoria = tx_fem$idadeaposentadoria + 5
+  
+  tx_fem = filter(tx_fem, between(tx_fem$idadeaposentadoria,
+                                  55,
+                                  75))
+  
+  tx_masc = filter(tx_masc, between(tx_masc$idadeaposentadoria,
+                                    55,
+                                    75))
+  
+  plot(tx_fem$idadeaposentadoria, tx_fem$Taxa_fem,
+       type = "lines",
+       col = "red",
+       main =  title,
+       xlab = "Idade de Aposentadoria",
+       ylab = "Taxa de aposentadoria",
+       cex.lab = 0.8,
+       cex.axis = 0.8,
+       cex.main = 0.9)
+  lines(tx_masc$idadeaposentadoria, tx_masc$Taxa_masc,
+        col = "blue")
+  legend("right",
+         legend = c("Feminino", "Masculino"),
+         col = c("red", "blue"),
+         lty = 1:1,
+         cex = 0.7, box.lty=0 )
+  
+  
+  my_test = ks.test(tx_fem$Taxa, tx_masc$Taxa)
+  
+  return(my_test)
+}
+
+# Teste de Padroniza??o
+padronizado = function(db)
+{
+  db$Qntd_padr_masc = (db$Qntd_masc - mean(db$Qntd_masc))/sd(db$Qntd_masc)
+  db$Qntd_padr_fem = (db$Qntd_fem - mean(db$Qntd_fem))/sd(db$Qntd_fem)  
+  db$Qntd_padr_total = (db$Qntd_total - mean(db$Qntd_total))/sd(db$Qntd_total)    
+  db$Tx_padr_masc = (db$Taxa_masc - mean(db$Taxa_masc))/sd(db$Taxa_masc)
+  db$Tx_padr_fem = (db$Taxa_fem - mean(db$Taxa_fem))/sd(db$Taxa_fem)  
+  db$Tx_padr_total = (db$Taxa_total - mean(db$Taxa_total))/sd(db$Taxa_total)    
+  
+  return(db)
+}
+
+# Fun??o para plotar a quantidade padronizada de aposentados em ambos sexos na carreira
+Qnt_padr_f_m = function(db, title)
+{
+  Qntd_fem = db[,c("idadeaposentadoria","Qntd_padr_fem")] 
+  Qntd_masc = db[,c("idadeaposentadoria","Qntd_padr_masc")]
+  
+  gq = plot(Qntd_fem$idadeaposentadoria,
+            Qntd_fem$Qntd_padr_fem,
+            type = "lines",
+            col = "red",
+            main = title,
+            xlab = "Idade de Aposentadoria",
+            ylab = "Quantidade de aposentados",
+            cex.lab = 0.8,
+            cex.axis = 0.8,
+            cex.main = 0.9)
+  lines(Qntd_masc$idadeaposentadoria,
+        Qntd_masc$Qntd_padr_masc,
+        col = "blue")
+  return(gq)
+}
+
+# Teste de transla??o da Quantidade Padronizada 
+test_transl_qntd_padronizada = function(Qntd, title)
+{ 
+  Qntd_fem = Qntd[,c("idadeaposentadoria","Qntd_padr_fem")] 
+  Qntd_masc = Qntd[,c("idadeaposentadoria","Qntd_padr_masc")]
+  
+  Qntd_fem$idadeaposentadoria = Qntd_fem$idadeaposentadoria + 5
+  
+  Qntd_fem = filter(Qntd_fem, between(Qntd_fem$idadeaposentadoria,
+                                      55,
+                                      75))
+  
+  Qntd_masc = filter(Qntd_masc, between(Qntd_masc$idadeaposentadoria,
+                                        55,
+                                        75))
+  
+  x1 = full_join(Qntd_fem, Qntd_masc, by = "idadeaposentadoria")
+  
+  pad = data.frame(idadeaposentadoria = x1$idadeaposentadoria,
+                   Qntd_padr_fem = x1$Qntd_padr_fem,
+                   Qntd_padr_masc = x1$Qntd_padr_masc)
+  
+  plot(pad$idadeaposentadoria,
+       pad$Qntd_padr_fem,
+       type = "lines",
+       col = "red",
+       main = title,
+       xlab = "Idade de Aposentadoria",
+       ylab = "Qntd Padronizada de aposentados",
+       cex.lab = 0.8,
+       cex.axis = 0.8,
+       cex.main = 0.9)
+  lines(pad$idadeaposentadoria,
+        pad$Qntd_padr_masc,
+        col = "blue")
+  
+  my_test = ks.test(Qntd_fem$Qntd, Qntd_masc$Qntd)
+  
+  return(my_test)
+}
+
+# ELABORANDO  TESTE DE TRANSLA??O DAS TAXAS PADRONIZADAS
+teste_translacao_tx_padr = function(tx, title)
+{ 
+  tx_fem = tx[,c("idadeaposentadoria","Tx_padr_fem")] 
+  tx_masc = tx[,c("idadeaposentadoria","Tx_padr_masc")]
+  
+  tx_fem$idadeaposentadoria = tx_fem$idadeaposentadoria + 5
+  
+  tx_fem = filter(tx_fem, between(tx_fem$idadeaposentadoria,
+                                  55,
+                                  75))
+  
+  tx_masc = filter(tx_masc, between(tx_masc$idadeaposentadoria,
+                                    55,
+                                    75))
+  
+  plot(tx_fem$idadeaposentadoria, tx_fem$Tx_padr_fem,
+       type = "lines",
+       col = "red",
+       main =  title,
+       xlab = "Idade de Aposentadoria",
+       ylab = "Taxa de aposentadoria",
+       cex.lab = 0.8,
+       cex.axis = 0.8,
+       cex.main = 0.9)
+  lines(tx_masc$idadeaposentadoria, tx_masc$Tx_padr_masc,
+        col = "blue")
+  
+  my_test = ks.test(tx_fem$Taxa, tx_masc$Taxa)
+  
+  return(my_test)
+}
+
+# Teste de Normaliza??o
+normalizado = function(db)
+{
+  db$Qntd_norm_masc = (db$Qntd_masc - min(db$Qntd_masc))/(max(db$Qntd_masc)-min(db$Qntd_masc))
+  db$Qntd_norm_fem = (db$Qntd_fem - min(db$Qntd_fem))/(max(db$Qntd_fem)-min(db$Qntd_fem))
+  db$Qntd_norm_total = (db$Qntd_total - min(db$Qntd_total))/(max(db$Qntd_total)-min(db$Qntd_total))
+  db$Tx_norm_masc = (db$Taxa_masc - min(db$Taxa_masc))/(max(db$Taxa_masc)-min(db$Taxa_masc))
+  db$Tx_norm_fem = (db$Taxa_fem - min(db$Taxa_fem))/(max(db$Taxa_fem)-min(db$Taxa_fem))
+  db$Tx_norm_total = (db$Taxa_total - min(db$Taxa_total))/(max(db$Taxa_total)-min(db$Taxa_total))
+  
+  return(db)
+}
+
+# Foi verificado no teste de transla?ao para os militares em um intervalor de idade que se inciava aos
+#45 anos e outro aos 40 anos e ambos tambem refeitaram a hipotese por isso ser?
+# Repetindo fun??o para calculo de taxas por?m a taxa de militares ser?
+#calculada apenas para o sexo masculino de forma a representar a maioria dessa
+#carreira, isso se deve por ter sido rejeitado no teste de transla??o para
+#quantidade padronizada de aposentados.
+
+taxas_carreira1 = function(db)
+{
+  p2 = db %>%                             
+    group_by(idadeaposentadoria) %>%
+    count()
+  
+  masc2 = filter(db,db$CO_SEXO_APOSENTADO == 2) %>%
+    group_by(idadeaposentadoria) %>%
+    count()
+  
+  masc2[is.na(masc2)] = 0
+  
+  m2 = full_join(p2,masc2, by = "idadeaposentadoria")
+  
+  m2[is.na(m2)] = 0
+  
+  y = data.frame(idadeaposentadoria = p2$idadeaposentadoria,
+                 Qntd_total = p2$n,
+                 Qntd_masc = m2$n.y,
+                 Taxa_total = (p2$n / sum(p2$n)),
+                 Taxa_masc = (m2$n.y / sum(p2$n)))
+  return(y)
+}
+
+tab_tx_m_m = taxas_carreira1(militares) #Taxa referente a militares masculinos apenas 
+
+Qntd_militar_m = tab_tx_m_m[,c("idadeaposentadoria","Qntd_masc")]
+
+plot_qntd_m_m = plot(Qntd_militar_m$idadeaposentadoria,
+                     Qntd_militar_m$Qntd_masc,
+                     type = "lines",
+                     col = "blue",
+                     main = "Quantidade de militares masculino aposentados",
+                     xlab = "Idade de Aposentadoria",
+                     ylab = "Quantidade de aposentados")
+
+
+# Juntar a quantidade de mulheres somando +5 anos e juntar com os homens
+#e contruir a tabua de taxas e  teste de suavizada para militares vou usar 
+#apenas os homens pois o teste foi rejeitado e estaremos represnetando a maior 
+#parte da popula?ao militar
+
+df = function(db)
+{
+  p1 = db %>%
+    group_by(idadeaposentadoria)
+  
+  if (is.null(db$Qntd_fem)){ 
+    p1$Qntd_fem = 0 
+  }
+  
+  f = p1 [,c("idadeaposentadoria","Qntd_fem")] 
+  m = db [,c("idadeaposentadoria","Qntd_masc")]
+  
+  f$idadeaposentadoria = f$idadeaposentadoria + 5
+  m$idadeaposentadoria = m$idadeaposentadoria
+  
+  z= p1 %>%
+    full_join(m, by = "idadeaposentadoria") %>%
+    full_join(f, by = "idadeaposentadoria")
+  
+  z[is.na(z)] = 0
+  
+  x = data.frame(idadeaposentadoria = z$idadeaposentadoria,
+                 Qntd_masc = z$Qntd_masc.x,
+                 Qntd_fem = z$Qntd_fem.x,
+                 Qntd_total = (z$Qntd_masc.x)+(z$Qntd_fem.x),
+                 Tx_masc = z$Qntd_masc.x / sum(z$Qntd_masc.x + z$Qntd_fem.x),
+                 Tx_fem = z$Qntd_fem.x / sum(z$Qntd_masc.x + z$Qntd_fem.x),
+                 Tx_total = z$Qntd_masc.x + z$Qntd_fem.x / sum(z$Qntd_masc.x + z$Qntd_fem.x))
+  
+  w = filter(x, Qntd_total != 0 ) 
+  
+  return(w)
+}
+
+# Teste de ader?ncia
+# Suaviza??o por Kernel
+teste_aderencia = function(tx, title)
+{
+  tx = tx[,c("idadeaposentadoria","Taxa_total")] 
+  v = data.frame( bkde(tx$Taxa, gridsize =  length(tx$Taxa)))
+  var(tx$Taxa)
+  v = data.frame(x = v$x , y = (v$y / sum(v$y)))
+  sum(v$y)
+  v$Taxa = tx$Taxa
+  v$idadeaposentadoria = tx$idadeaposentadoria
+  plot(v$idadeaposentadoria,
+       v$Taxa,
+       type = "p",
+       col = "darkblue",
+       ylab = "Taxa de Aposentadoria",
+       xlab = "Idade de Aposentadoria",
+       main = title)
+  lines(v$idadeaposentadoria, v$y)
+  inicio = which(v$y == max(v$y))
+  fim= length(v$x)
+  # Testando se a fun??o ? decrescente
+  v$y[inicio:(fim-1)] > v$y[(inicio+1):fim]
+  sum(v$y[inicio:(fim-1)] < v$y[(inicio+1):fim])
+  my_test = ks.test(v$y,v$Taxa)
+  return(my_test)
+}
+
+teste_aderencia1 = function(tx, title, sexo)
+{
+  if(sexo == 1){
+    taxa = "Taxa_fem"
+    cor = "red"
+  }else{
+    taxa = "Taxa_masc"
+    cor = "blue"
+  }
+  
+  #maximo = max(tx$Taxa_total)
+
+  tx = tx[,c("idadeaposentadoria",taxa)] 
+  v = data.frame( bkde(tx$Taxa, gridsize =  length(tx$Taxa)))
+  var(tx$Taxa)
+  v = data.frame(x = v$x, y = (v$y / sum(v$y)))
+  sum(v$y)
+  v$Taxa = tx$Taxa
+  v$idadeaposentadoria = tx$idadeaposentadoria
+  
+  plot(v$idadeaposentadoria,
+       v$Taxa,
+       type = "p",
+       col = cor,
+       ylab = "Taxa de Aposentadoria",
+       xlab = "Idade de Aposentadoria",
+       #ylim = c(0, maximo),
+       main = title,
+       cex.lab=1,
+       cex.axis=1,
+       cex.main=1)
+  
+  lines(v$idadeaposentadoria, v$y)
+  inicio = which(v$y == max(v$y))
+  fim= length(v$x)
+  # Testando se a fun??o ? decrescente
+  v$y[inicio:(fim-1)] > v$y[(inicio+1):fim]
+  sum(v$y[inicio:(fim-1)] < v$y[(inicio+1):fim])
+  my_test = ks.test(v$y,v$Taxa)
+  return(my_test)
+}
+
+tabua = function(db)
+{  
+  p1 = db %>%
+    group_by(idadeaposentadoria)
+  
+  if (is.null(db$Qntd_fem)){ 
+    p1$Qntd_fem = 0 
+  }
+  
+  f = p1 [,c("idadeaposentadoria","Qntd_fem")] 
+  m = db [,c("idadeaposentadoria","Qntd_masc")]
+  
+  f$idadeaposentadoria = f$idadeaposentadoria + 5
+  m$idadeaposentadoria = m$idadeaposentadoria
+  
+  z= p1 %>%
+    full_join(m, by = "idadeaposentadoria") %>%
+    full_join(f, by = "idadeaposentadoria")
+  
+  z[is.na(z)] = 0
+  
+  x = data.frame(idadeaposentadoria = z$idadeaposentadoria,
+                 Tx_total = z$Taxa_total)     #Qntd_masc.x + z$Qntd_fem.x / sum(z$Qntd_masc.x + z$Qntd_fem.x))
+  
+  w = filter(x, Tx_total != 0 ) 
+  
+  return(w)
+}
+
+db = tab_tx_p
+p1 = db %>%
+  group_by(idadeaposentadoria)
+
+if (is.null(db$Qntd_fem)){ 
+  p1$Qntd_fem = 0 
+}
+
+f = p1 [,c("idadeaposentadoria","Qntd_fem")] 
+m = db [,c("idadeaposentadoria","Qntd_masc")]
+
+f$idadeaposentadoria = f$idadeaposentadoria + 5
+m$idadeaposentadoria = m$idadeaposentadoria
+
+z= p1 %>%
+  full_join(m, by = "idadeaposentadoria") %>%
+  full_join(f, by = "idadeaposentadoria")
+
+z[is.na(z)] = 0
+
+x = data.frame(idadeaposentadoria = z$idadeaposentadoria,
+               Tx_total = z$Taxa_total)     #Qntd_masc.x + z$Qntd_fem.x / sum(z$Qntd_masc.x + z$Qntd_fem.x))
+
+w = filter(x, Tx_total != 0 ) 
+
+
