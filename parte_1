@@ -1,0 +1,177 @@
+# REMMINDER
+# Para o grupo dos professores as novas regras s?o de idade minima 57 para mulheres e 60 para homens 
+# Para o grupo dos policiais civis as novas regras s?o de idade minima 55 para mulheres e 55 para homens 
+# Para o grupo dos servidores  as novas regras s?o de idade minima 62 para mulheres e 65 para homens
+
+rm(list=ls())
+
+# Libraries
+library(tidyverse)
+library(gdata)
+library(gridExtra)
+library(readxl)
+library(scatterplot3d)
+library(rgl)
+library(KernSmooth)
+library(dplyr)
+library(ggplot2)
+library(RColorBrewer)
+library(writexl)
+
+i2021 <- read_excel("Z:/ArquivosTI/Atuario042021.xlsx", 
+                    sheet = "Inativo" , col_types = c("numeric", 
+                                                      "numeric",
+                                                      "numeric",
+                                                      "text",
+                                                      "text", 
+                                                      "numeric",
+                                                      "numeric",
+                                                      "text",
+                                                      "text", 
+                                                      "numeric",
+                                                      "numeric",
+                                                      "numeric", 
+                                                      "numeric",
+                                                      "numeric",
+                                                      "numeric", 
+                                                      "text",
+                                                      "text", 
+                                                      "numeric",
+                                                      "numeric", 
+                                                      "date",
+                                                      "date",
+                                                      "date",
+                                                      "date",
+                                                      "numeric", 
+                                                      "text",
+                                                      "numeric",
+                                                      "numeric",
+                                                      "numeric", 
+                                                      "numeric",
+                                                      "numeric",
+                                                      "numeric", 
+                                                      "numeric",
+                                                      "numeric",
+                                                      "numeric")
+)
+
+# Base de inativos 
+i2021 = i2021 %>% distinct(i2021$ID_APOSENTADO_CPF, .keep_all = TRUE)
+i2021$data_focal =  rep(as.Date("2021/04/30"), length(i2021$ID_APOSENTADO_CPF))
+#Reformulate how to calculate retirement age
+i2021$idadeaposentadoria = floor ((i2021$DT_INICIO_APOSENTADORIA -i2021$DT_NASC_APOSENTADO)/365.25)
+
+i2021$idadeaposentadoria = as.numeric(i2021$idadeaposentadoria)
+
+i2021$anoaposentadoria = lubridate::year(i2021$DT_INICIO_APOSENTADORIA)
+
+averbacao_total = (i2021$NU_TEMPO_RPPS_MUN + i2021$NU_TEMPO_RPPS_EST + i2021$NU_TEMPO_RPPS_FED)
+i2021$TEMPO_CONTR_TOTAL = difftime(as.POSIXct(i2021$DT_INICIO_APOSENTADORIA),
+                                   as.POSIXct(i2021$DATA_DE_INGRESSO_NO_ENTE, tz="UTC"),
+                                   units="days") + 
+  ifelse(i2021$CO_COMP_MASSA == 2, 
+         ifelse(averbacao_total <= 14610,
+                averbacao_total,
+                14610),
+         averbacao_total)
+
+i2021$TEMPO_CONTR_TOTAL = floor(i2021$TEMPO_CONTR_TOTAL/365.25) 
+
+# Filtrando aposentadorias programas 
+# N?o foram consideradas:
+#    1. Aposentadorias por invalidez;
+#    2. Aposentadorias com menos de 20 anos de contribui??o;
+#    3. Aposentadorias com idade inicial menor que 40 e maior que 70; e
+#    4. Aposentadorias concedidas antes de 2010 e depois de 2019.
+i2021 = filter(i2021, i2021$CO_TIPO_APOSENTADORIA != 4)
+i2021 = filter(i2021, i2021$TEMPO_CONTR_TOTAL > 20)
+i2021 = filter(i2021, between(i2021$idadeaposentadoria, 40 , 75))
+i2021 = filter(i2021, lubridate::year(i2021$DT_INICIO_APOSENTADORIA) >= 2010 &
+                 lubridate::year(i2021$DT_INICIO_APOSENTADORIA) <= 2019 )
+
+#####################################
+#    Analise Descritiva dos dados   #  
+#####################################
+#Tabulando qtd x idade de aposentadoria
+cnt_i2021 = i2021 %>%
+  group_by(idadeaposentadoria) %>%
+  count()
+
+
+# Quantidade de mulheres e homens na base 
+feminino = filter(i2021, i2021$CO_SEXO_APOSENTADO == 1) # 17.054 mulheres aposentadas
+masculino = filter(i2021, i2021$CO_SEXO_APOSENTADO == 2) # 7.325 Homens aposentados
+
+# M?dia das idades de aposentadoria de ambos os sexos
+summary(feminino$idadeaposentadoria) # M?dia 56.28
+summary(masculino$idadeaposentadoria) # M?dia 55.49 
+
+# M?dia do valor do beneficio para sexo masculino e feminino
+summary(feminino$VL_APOSENTADORIA) # m?dia do valor da aposentadoria ? de R$4.947
+summary(masculino$VL_APOSENTADORIA) # m?dia do valor da aposentadoria ? de R$11.186
+
+# Dividindo tabelas por profiss?o
+professores = i2021 %>% filter(CO_TIPO_CARGO == 2 | CO_TIPO_CARGO == 3) # 9.853 professores aposentados na base
+militares = i2021 %>% filter(CO_COMP_MASSA == 2) # 3.814 militares aposentados na base
+policiais = i2021 %>% filter(CO_COMP_MASSA == 1 & CO_TIPO_CARGO == 4) # 1.036 policiais aposentados na base
+demais_servidores = i2021 %>% filter(CO_COMP_MASSA == 1 & CO_TIPO_CARGO == 7) # 9.676 demais servidores aposentados na base
+
+
+# Pct das profiss?es pelo dataframe
+dim(professores)[1]/dim(i2021)[1] # 40,4%
+dim(militares)[1]/dim(i2021)[1] # 15,6%
+dim(policiais)[1]/dim(i2021)[1] # 4,2%
+dim(demais_servidores)[1]/dim(i2021)[1] # 39,7% 
+
+# Valores de importancia referente a idade de aposentadoria
+summary(professores$idadeaposentadoria); sd(professores$idadeaposentadoria) #m?dia de 54,86 anos
+summary(militares$idadeaposentadoria); sd(militares$idadeaposentadoria) # m?dia de 50,51 anos 
+summary(policiais$idadeaposentadoria); sd(policiais$idadeaposentadoria) # m?dia 53,99 anos 
+summary(demais_servidores$idadeaposentadoria); sd(demais_servidores$idadeaposentadoria) # m?doa de 59,61 anos
+
+# M?dia referente a valor de beneficio em cada carreira
+summary(professores$VL_APOSENTADORIA) # m?dia do valor da aposentadoria ? de R$5.208
+summary(militares$VL_APOSENTADORIA) # m?dia do valor da aposentadoria ? de R$13.0
+summary(policiais$VL_APOSENTADORIA) # m?dia do valor da aposentadoria ? de R$13.337
+summary(demais_servidores$VL_APOSENTADORIA) # m?dia do valor da aposentadoria ? de R$5.316
+
+
+# Dividindo tabelas por profiss?o e sexo
+prof_f = filter(professores, professores$CO_SEXO_APOSENTADO == 1) # 9.040 prof fem aposentadas
+prof_m = filter(professores, professores$CO_SEXO_APOSENTADO == 2) # 813 prof masc aposentados
+mili_f = filter(militares, militares$CO_SEXO_APOSENTADO == 1) # 145 mili fem aposentadas
+mili_m = filter(militares, militares$CO_SEXO_APOSENTADO == 2) # 3.669 mili masc aposentados
+pc_f = filter(policiais, policiais$CO_SEXO_APOSENTADO == 1) # 293 pc fem aposentadas
+pc_m = filter(policiais, policiais$CO_SEXO_APOSENTADO == 2) # 743 pc masc aposentados
+d_f = filter(demais_servidores, demais_servidores$CO_SEXO_APOSENTADO == 1) # 7.576 demais fem aposentadas
+d_m = filter(demais_servidores, demais_servidores$CO_SEXO_APOSENTADO == 2) # 2.100 demais masc aposentados
+
+# M?dia referente a valor de beneficio em cada carreira e sexo
+summary(prof_f$VL_APOSENTADORIA) # m?dia do valor da aposentadoria ? de R$5.201
+summary(prof_m$VL_APOSENTADORIA) # m?dia do valor da aposentadoria ? de R$5.284
+summary(mili_f$VL_APOSENTADORIA) # m?dia do valor da aposentadoria ? de R$15.228
+summary(mili_m$VL_APOSENTADORIA) # m?dia do valor da aposentadoria ? de R$12.954
+summary(pc_f$VL_APOSENTADORIA) # m?dia do valor da aposentadoria ? de R$12.946
+summary(pc_m$VL_APOSENTADORIA) # m?dia do valor da aposentadoria ? de R$13.491
+summary(d_f$VL_APOSENTADORIA) # m?dia do valor da aposentadoria ? de R$4.139
+summary(d_m$VL_APOSENTADORIA) # m?dia do valor da aposentadoria ? de R$9.565
+
+# Pct das profiss?es por sexo pelo dataframe
+dim(prof_f)[1]/dim(i2021)[1] # 37,1%
+dim(prof_m)[1]/dim(i2021)[1] # 3,33%
+dim(mili_f)[1]/dim(i2021)[1] # 0,06%
+dim(mili_m)[1]/dim(i2021)[1] # 15%
+dim(pc_f)[1]/dim(i2021)[1] # 1,2%
+dim(pc_m)[1]/dim(i2021)[1] # 3%
+dim(d_f)[1]/dim(i2021)[1] # 31,1%
+dim(d_m)[1]/dim(i2021)[1] # 8,6%
+
+# Pct das carreiras por sexo pela carreira
+dim(prof_f)[1]/dim(professores)[1] # 91,7%
+dim(prof_m)[1]/dim(professores)[1] # 8,3 
+dim(mili_f)[1]/dim(militares)[1] # 3,8%
+dim(mili_m)[1]/dim(militares)[1] # 96,2%
+dim(pc_f)[1]/dim(policiais)[1] # 28,3%
+dim(pc_m)[1]/dim(policiais)[1] # 72,7%
+dim(d_f)[1]/dim(demais_servidores)[1] # 78,3%
+dim(d_m)[1]/dim(demais_servidores)[1] # 21,7%
